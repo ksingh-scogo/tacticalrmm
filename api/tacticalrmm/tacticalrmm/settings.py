@@ -41,7 +41,7 @@ NATS_SERVER_VER = "2.10.22"
 
 # Install Nushell on the agent
 # https://github.com/nushell/nushell
-INSTALL_NUSHELL = True
+INSTALL_NUSHELL = False
 # GitHub version to download. The file will be downloaded from GitHub, extracted and installed.
 # Version to download. If INSTALL_NUSHELL_URL is not provided, the file will be downloaded from GitHub,
 # extracted and installed.
@@ -63,7 +63,7 @@ NUSHELL_ENABLE_CONFIG = False
 
 # Install Deno on the agent
 # https://github.com/denoland/deno
-INSTALL_DENO = True
+INSTALL_DENO = False
 # Version to download. If INSTALL_DENO_URL is not provided, the file will be downloaded from GitHub,
 # extracted and installed.
 INSTALL_DENO_VERSION = "v1.44.4"
@@ -95,7 +95,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 ASGI_APPLICATION = "tacticalrmm.asgi.application"
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Kolkata"
 USE_I18N = False  # disabled for performance, enable when we add translation support
 USE_TZ = True
 
@@ -114,7 +114,7 @@ DEMO = False
 DEBUG = False
 ADMIN_ENABLED = False
 HOSTED = False
-SWAGGER_ENABLED = False
+SWAGGER_ENABLED = True
 REDIS_HOST = "127.0.0.1"
 TRMM_LOG_LEVEL = "ERROR"
 TRMM_LOG_TO = "file"
