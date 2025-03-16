@@ -121,11 +121,16 @@ sudo systemctl restart systemd-journald.service
 DJANGO_SEKRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 80 | head -n 1)
 ADMINURL=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 70 | head -n 1)
 MESHPASSWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 25 | head -n 1)
-pgusername=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 8 | head -n 1)
-pgpw=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+
+# Set fixed database credentials for Neon cloud database
+pgusername="neondb_owner"
+pgpw="npg_lyjE2SAFGLN7"
+pghost="ep-polished-bonus-a18ur1vn-pooler.ap-southeast-1.aws.neon.tech"
+MESHPGUSER="neondb_owner"
+MESHPGPWD="npg_lyjE2SAFGLN7"
+
+# Only generate random username for MeshCentral admin login (not database related)
 meshusername=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 8 | head -n 1)
-MESHPGUSER=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 8 | head -n 1)
-MESHPGPWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 
 cls() {
   printf "\033c"
@@ -339,42 +344,50 @@ sudo rm -rf Python-${PYTHON_VER} Python-${PYTHON_VER}.tgz
 print_green 'Installing redis and git'
 sudo apt install -y redis git
 
-print_green 'Installing postgresql'
+# Comment out or remove these lines
+# print_green 'Installing postgresql'
+# echo "$postgresql_repo" | sudo tee /etc/apt/sources.list.d/pgdg.list
+# wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql-archive-keyring.gpg
+# sudo apt update
+# sudo apt install -y postgresql-15
 
-echo "$postgresql_repo" | sudo tee /etc/apt/sources.list.d/pgdg.list
+print_green 'Configuring remote database connection for trmm'
 
-wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql-archive-keyring.gpg
-sudo apt update
-sudo apt install -y postgresql-15
-sleep 2
-sudo systemctl enable --now postgresql
+# Instead of creating local database, we're using cloud database
+# No need to run local PostgreSQL commands
 
-until pg_isready >/dev/null; do
-  echo -ne "${GREEN}Waiting for PostgreSQL to be ready${NC}\n"
-  sleep 3
-done
+# Update database connection variables
+pgusername="neondb_owner"
+pgpw="npg_lyjE2SAFGLN7"
+pghost="ep-polished-bonus-a18ur1vn-pooler.ap-southeast-1.aws.neon.tech"
+
+# Also update MeshCentral database variables
+MESHPGUSER="neondb_owner"
+MESHPGPWD="npg_lyjE2SAFGLN7"
 
 print_green 'Creating database for trmm'
 
-sudo -iu postgres psql -c "CREATE DATABASE tacticalrmm"
-sudo -iu postgres psql -c "CREATE USER ${pgusername} WITH PASSWORD '${pgpw}'"
-sudo -iu postgres psql -c "ALTER ROLE ${pgusername} SET client_encoding TO 'utf8'"
-sudo -iu postgres psql -c "ALTER ROLE ${pgusername} SET default_transaction_isolation TO 'read committed'"
-sudo -iu postgres psql -c "ALTER ROLE ${pgusername} SET timezone TO 'UTC'"
-sudo -iu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE tacticalrmm TO ${pgusername}"
-sudo -iu postgres psql -c "ALTER DATABASE tacticalrmm OWNER TO ${pgusername}"
-sudo -iu postgres psql -c "GRANT USAGE, CREATE ON SCHEMA PUBLIC TO ${pgusername}"
+# Comment out or remove these PostgreSQL database creation sections
+# sudo -iu postgres psql -c "CREATE DATABASE tacticalrmm"
+# sudo -iu postgres psql -c "CREATE USER ${pgusername} WITH PASSWORD '${pgpw}'"
+# sudo -iu postgres psql -c "ALTER ROLE ${pgusername} SET client_encoding TO 'utf8'"
+# sudo -iu postgres psql -c "ALTER ROLE ${pgusername} SET default_transaction_isolation TO 'read committed'"
+# sudo -iu postgres psql -c "ALTER ROLE ${pgusername} SET timezone TO 'UTC'"
+# sudo -iu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE tacticalrmm TO ${pgusername}"
+# sudo -iu postgres psql -c "ALTER DATABASE tacticalrmm OWNER TO ${pgusername}"
+# sudo -iu postgres psql -c "GRANT USAGE, CREATE ON SCHEMA PUBLIC TO ${pgusername}"
 
 print_green 'Creating database for meshcentral'
 
-sudo -iu postgres psql -c "CREATE DATABASE meshcentral"
-sudo -iu postgres psql -c "CREATE USER ${MESHPGUSER} WITH PASSWORD '${MESHPGPWD}'"
-sudo -iu postgres psql -c "ALTER ROLE ${MESHPGUSER} SET client_encoding TO 'utf8'"
-sudo -iu postgres psql -c "ALTER ROLE ${MESHPGUSER} SET default_transaction_isolation TO 'read committed'"
-sudo -iu postgres psql -c "ALTER ROLE ${MESHPGUSER} SET timezone TO 'UTC'"
-sudo -iu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE meshcentral TO ${MESHPGUSER}"
-sudo -iu postgres psql -c "ALTER DATABASE meshcentral OWNER TO ${MESHPGUSER}"
-sudo -iu postgres psql -c "GRANT USAGE, CREATE ON SCHEMA PUBLIC TO ${MESHPGUSER}"
+# Comment out or remove these PostgreSQL database creation sections
+# sudo -iu postgres psql -c "CREATE DATABASE meshcentral"
+# sudo -iu postgres psql -c "CREATE USER ${MESHPGUSER} WITH PASSWORD '${MESHPGPWD}'"
+# sudo -iu postgres psql -c "ALTER ROLE ${MESHPGUSER} SET client_encoding TO 'utf8'"
+# sudo -iu postgres psql -c "ALTER ROLE ${MESHPGUSER} SET default_transaction_isolation TO 'read committed'"
+# sudo -iu postgres psql -c "ALTER ROLE ${MESHPGUSER} SET timezone TO 'UTC'"
+# sudo -iu postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE meshcentral TO ${MESHPGUSER}"
+# sudo -iu postgres psql -c "ALTER DATABASE meshcentral OWNER TO ${MESHPGUSER}"
+# sudo -iu postgres psql -c "GRANT USAGE, CREATE ON SCHEMA PUBLIC TO ${MESHPGUSER}"
 
 print_green 'Cloning repos'
 
@@ -461,7 +474,9 @@ meshcfg="$(
       "user": "${MESHPGUSER}",
       "password": "${MESHPGPWD}",
       "port": "5432",
-      "host": "localhost"
+      "host": "${pghost}",
+      "database": "meshcentral",
+      "ssl": true
     }
   },
   "domains": {
@@ -502,8 +517,12 @@ DATABASES = {
         'NAME': 'tacticalrmm',
         'USER': '${pgusername}',
         'PASSWORD': '${pgpw}',
-        'HOST': 'localhost',
+        'HOST': '${pghost}',
         'PORT': '5432',
+        'CONN_MAX_AGE': 60,
+        'OPTIONS': {
+            'sslmode': 'require',
+        }
     }
 }
 
