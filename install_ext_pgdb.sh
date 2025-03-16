@@ -464,42 +464,12 @@ meshcfg="$(
     "allowHighQualityDesktop": true,
     "tlsOffload": "127.0.0.1",
     "agentCoreDump": false,
-    "SessionRecording": {
-      "maxRecordings": 20,
-      "maxRecordingDays": 30
-    },
-    "WebRTC": true,
-    "SessionRecordingOptions": {
-      "index": 1,
-      "screen": 1,
-      "webcam": 0
-    },
-    "browserPing": 60000,
     "compression": true,
+    "browserPing": 60000,
+    "WebRTC": true,
     "wsCompression": true,
     "agentWsCompression": true,
-    "limits": {
-      "MaxSessions": 100 
-    },
-    "AgentConfig": {
-      "displayName": true,
-      "maxCpuLoad": 70,
-      "maxMemLoad": 80
-    },
-    "AutoBackup": {
-      "backupIntervalhours": 24,
-      "keepLastBackupFiles": 7,
-      "backupPath": "/meshcentral/meshcentral-backups"
-    },
-    "maxInvalidLogin": { 
-      "time": 5, 
-      "count": 5, 
-      "coolofftime": 30 
-    },
-    "firebase": {
-      "serverkey": ""
-    },
-    "SMTPServer": null,
+    "maxInvalidLogin": { "time": 5, "count": 5, "coolofftime": 30 },
     "postgres": {
       "user": "${MESHPGUSER}",
       "password": "${MESHPGPWD}",
@@ -511,35 +481,13 @@ meshcfg="$(
   },
   "domains": {
     "": {
-      "title": "Tactical RMM",
-      "title2": "Tactical RMM",
+      "title": "Scogo Nexus RMM",
+      "title2": "Scogo Nexus RMM",
       "newAccounts": false,
       "certUrl": "https://${meshdomain}:443/",
       "geoLocation": true,
       "cookieIpCheck": false,
-      "mstsc": true,
-      "userConsentFlags": 1,
-      "authStrengthening": true,
-      "SessionRecording": true,
-      "agentConfig": [
-        "webSocketMaskOverride=1",
-        "cleanLegacyAgentNodeID=1"
-      ],
-      "desktopMultiplex": true,
-      "agentCustomization": {
-        "displayName": true,
-        "consent": true,
-        "setupCommands": []
-      },
-      "powerShellCorePath": "${arch}" == "aarch64" ? "/usr/bin/pwsh" : "/opt/microsoft/powershell/7/pwsh",
-      "userAllowedIP": "",
-      "urlParam1": "",
-      "urlParam2": "",
-      "deviceLocation": true,
-      "amtAcmActivation": {
-        "provisioningServerUrl": "",
-        "provisioningCert": ""
-      }
+      "mstsc": true
     }
   }
 }

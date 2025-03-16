@@ -60,3 +60,11 @@ setup_dev.yml
 query_schema.json
 gunicorn_config.py
 set_local_config.py
+v1.json
+v2.json
+trmm-awesome
+.docker.env.example
+docker-compose.yaml
+kubernetes
+v1-working.json
+v2-not-working.json
