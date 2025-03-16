@@ -466,10 +466,42 @@ meshcfg="$(
     "allowHighQualityDesktop": true,
     "tlsOffload": "127.0.0.1",
     "agentCoreDump": false,
+    "SessionRecording": {
+      "maxRecordings": 20,
+      "maxRecordingDays": 30
+    },
+    "WebRTC": true,
+    "SessionRecordingOptions": {
+      "index": 1,
+      "screen": 1,
+      "webcam": 0
+    },
+    "browserPing": 60000,
     "compression": true,
     "wsCompression": true,
     "agentWsCompression": true,
-    "maxInvalidLogin": { "time": 5, "count": 5, "coolofftime": 30 },
+    "limits": {
+      "MaxSessions": 100 
+    },
+    "AgentConfig": {
+      "displayName": true,
+      "maxCpuLoad": 70,
+      "maxMemLoad": 80
+    },
+    "AutoBackup": {
+      "backupIntervalhours": 24,
+      "keepLastBackupFiles": 7,
+      "backupPath": "/meshcentral/meshcentral-backups"
+    },
+    "maxInvalidLogin": { 
+      "time": 5, 
+      "count": 5, 
+      "coolofftime": 30 
+    },
+    "firebase": {
+      "serverkey": ""
+    },
+    "SMTPServer": null,
     "postgres": {
       "user": "${MESHPGUSER}",
       "password": "${MESHPGPWD}",
@@ -487,7 +519,29 @@ meshcfg="$(
       "certUrl": "https://${meshdomain}:443/",
       "geoLocation": true,
       "cookieIpCheck": false,
-      "mstsc": true
+      "mstsc": true,
+      "userConsentFlags": 1,
+      "authStrengthening": true,
+      "SessionRecording": true,
+      "agentConfig": [
+        "webSocketMaskOverride=1",
+        "cleanLegacyAgentNodeID=1"
+      ],
+      "desktopMultiplex": true,
+      "agentCustomization": {
+        "displayName": true,
+        "consent": true,
+        "setupCommands": []
+      },
+      "powerShellCorePath": "${arch}" == "aarch64" ? "/usr/bin/pwsh" : "/opt/microsoft/powershell/7/pwsh",
+      "userAllowedIP": "",
+      "urlParam1": "",
+      "urlParam2": "",
+      "deviceLocation": true,
+      "amtAcmActivation": {
+        "provisioningServerUrl": "",
+        "provisioningCert": ""
+      }
     }
   }
 }
@@ -495,7 +549,29 @@ EOF
 )"
 echo "${meshcfg}" >/meshcentral/meshcentral-data/config.json
 
+# Create directory for backups
+sudo mkdir -p /meshcentral/meshcentral-backups
+sudo chown ${USER}:${USER} -R /meshcentral/meshcentral-backups
+
 npm install
+
+# Setup MeshCentral directory structure
+sudo mkdir -p /meshcentral/meshcentral-files
+sudo mkdir -p /meshcentral/meshcentral-backups
+sudo mkdir -p /meshcentral/meshcentral-recordings
+sudo chown ${USER}:${USER} -R /meshcentral
+
+# Set proper permissions
+sudo chmod 750 /meshcentral/meshcentral-data
+sudo chmod 750 /meshcentral/meshcentral-files
+sudo chmod 750 /meshcentral/meshcentral-backups
+sudo chmod 750 /meshcentral/meshcentral-recordings
+
+# Increase system limits for MeshCentral
+echo "fs.file-max = 100000" | sudo tee -a /etc/sysctl.conf
+echo "* soft nofile 100000" | sudo tee -a /etc/security/limits.conf
+echo "* hard nofile 100000" | sudo tee -a /etc/security/limits.conf
+echo "session required pam_limits.so" | sudo tee -a /etc/pam.d/common-session
 
 localvars="$(
   cat <<EOF
@@ -918,9 +994,11 @@ meshservice="$(
 [Unit]
 Description=MeshCentral Server
 After=network.target postgresql.service nginx.service
+Wants=network.target
+
 [Service]
 Type=simple
-LimitNOFILE=1000000
+LimitNOFILE=100000
 ExecStart=/usr/bin/node node_modules/meshcentral
 Environment=NODE_ENV=production
 WorkingDirectory=/meshcentral
@@ -928,6 +1006,12 @@ User=${USER}
 Group=${USER}
 Restart=always
 RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meshcentral
+# Set higher timeout values for better stability
+TimeoutStartSec=180
+TimeoutStopSec=180
 
 [Install]
 WantedBy=multi-user.target
