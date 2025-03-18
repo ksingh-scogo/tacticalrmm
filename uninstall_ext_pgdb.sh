@@ -121,7 +121,18 @@ if [ -d "/etc/letsencrypt/live" ]; then
   read -r remove_certs
   if [[ "$remove_certs" =~ ^[Yy]$ ]]; then
     print_green "Removing Let's Encrypt certificates"
-    sudo certbot delete --non-interactive || true
+    # Get all certificate names from the live directory
+    CERT_NAMES=$(sudo find /etc/letsencrypt/live -mindepth 1 -maxdepth 1 -type d -not -path "*/\.*" | xargs -n1 basename 2>/dev/null || echo "")
+    
+    if [ -n "$CERT_NAMES" ]; then
+      for cert_name in $CERT_NAMES; do
+        print_yellow "Deleting certificate: $cert_name"
+        sudo certbot delete --cert-name "$cert_name" --non-interactive || true
+      done
+    fi
+    
+    # To be thorough, remove the entire letsencrypt directory
+    print_yellow "Removing the entire letsencrypt directory for complete cleanup"
     sudo rm -rf /etc/letsencrypt
   else
     print_yellow "Skipping Let's Encrypt certificate removal"
