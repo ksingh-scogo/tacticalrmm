@@ -238,18 +238,18 @@ wget https://raw.githubusercontent.com/ksingh-scogo/tacticalrmm/refs/heads/ksing
 chmod +x install_ext_pgdb.sh
 
 # Edit the script to update database credentials
-nano install_ext_pgdb.sh
+vim install_ext_pgdb.sh
 ```
 
 Find and modify these lines in the script (around line 110-115):
 
 ```bash
 # Set database credentials for external PostgreSQL
-pgusername="trmm_user"  # Replace with your database user
-pgpw="your_secure_password"  # Replace with your password
+pgusername="scogo_nexus"  # Replace with your database user
+pgpw="SUPER_SECRET_PASSWORD"  # Replace with your password
 pghost="your-postgres-host.example.com"  # Replace with your PostgreSQL host
-MESHPGUSER="trmm_user"  # Use the same user for meshcentral
-MESHPGPWD="your_secure_password"  # Use the same password
+MESHPGUSER="scogo_nexus"  # Use the same user for meshcentral
+MESHPGPWD="SUPER_SECRET_PASSWORD"  # Use the same password
 ```
 
 Save the changes and proceed with the installation as described in the next section.
