@@ -27,17 +27,199 @@ The following domains will be used for this installation:
 3. **Email Address**: Required for Let's Encrypt certificates
 4. **Port Forwarding**: Ensure port 443 (HTTPS) is forwarded to your server if behind NAT
 
+## Setting Up External PostgreSQL Database
+
+This section guides you through setting up an external PostgreSQL database before running the TacticalRMM installation script. This is intended for users who want to use a remote PostgreSQL server instead of a local installation.
+
+### Prerequisites
+
+- An existing PostgreSQL server (version 12 or higher) accessible via network
+- PostgreSQL client tools installed on your local machine: `sudo apt install -y postgresql-client`
+- Network connectivity between your TacticalRMM server and PostgreSQL server
+
+### 1. Connect to Your External PostgreSQL Server
+
+```bash
+psql -h your-postgres-host.example.com -U postgres -p 5432
+```
+
+If your PostgreSQL server requires SSL:
+
+```bash
+psql "host=c-mycluster.12345678901234.postgres.cosmos.azure.com port=5432 dbname=citus user=NAME_pgdb_admin password=mypassword"
+
+```
+
+For cloud-hosted PostgreSQL services (like AWS RDS, Azure Database, GCP Cloud SQL, or Neon):
+- Use the connection string provided by your cloud provider
+- Ensure you have the correct username, password, and host information
+
+### 2. Create Databases and User
+
+Once connected to the PostgreSQL server, run these SQL commands to set up both databases with a single user:
+
+#### Develoment Environment:
+
+```
+User : scogo_nexus_dev
+Database Names 
+- nexusrmm_dev
+- nexusmesh_dev
+```
+
+```sql
+-- Create both databases
+CREATE DATABASE nexusrmm_dev;
+CREATE DATABASE nexusmesh_dev;
+
+-- Create a single user with password (use a strong password)
+CREATE USER scogo_nexus_dev WITH PASSWORD 'SUPER_SECRET_PASSWORD';
+
+-- Set appropriate parameters for the user
+ALTER ROLE scogo_nexus_dev SET client_encoding TO 'utf8';
+ALTER ROLE scogo_nexus_dev SET default_transaction_isolation TO 'read committed';
+ALTER ROLE scogo_nexus_dev SET timezone TO 'UTC';
+
+-- Grant necessary privileges to both databases
+GRANT ALL PRIVILEGES ON DATABASE nexusrmm_dev TO scogo_nexus_dev;
+GRANT ALL PRIVILEGES ON DATABASE nexusmesh_dev TO scogo_nexus_dev;
+
+-- Grant membership privileges
+GRANT scogo_nexus_dev TO NAME_pgdb_admin;
+
+-- Connect to nexusrmm database to set ownership
+\c nexusrmm_dev
+ALTER SCHEMA public OWNER TO scogo_nexus_dev;
+
+-- Connect to nexusmesh database to set ownership
+\c nexusmesh_dev
+ALTER SCHEMA public OWNER TO scogo_nexus_dev;
+
+```
+- Verify the database access:
+```
+
+PGPASSWORD=SUPER_SECRET_PASSWORD psql -h scogo-pgdb-prod.postgres.database.azure.com -U scogo_nexus_dev -d nexusrmm_dev
+
+PGPASSWORD=SUPER_SECRET_PASSWORD psql -h scogo-pgdb-prod.postgres.database.azure.com -U scogo_nexus_dev -d nexusmesh_dev
+
+```
+
+#### Production Environment:
+
+```
+User : scogo_nexus
+Database Names 
+- nexusrmm
+- nexusmesh
+```
+
+```sql
+-- Create both databases
+CREATE DATABASE nexusrmm;
+CREATE DATABASE nexusmesh;
+
+-- Create a single user with password (use a strong password)
+CREATE USER scogo_nexus WITH PASSWORD 'SUPER_SECRET_PASSWORD';
+
+-- Set appropriate parameters for the user
+ALTER ROLE scogo_nexus SET client_encoding TO 'utf8';
+ALTER ROLE scogo_nexus SET default_transaction_isolation TO 'read committed';
+ALTER ROLE scogo_nexus SET timezone TO 'UTC';
+
+-- Grant necessary privileges to both databases
+GRANT ALL PRIVILEGES ON DATABASE nexusrmm TO scogo_nexus;
+GRANT ALL PRIVILEGES ON DATABASE nexusmesh TO scogo_nexus;
+
+-- Grant membership privileges
+GRANT scogo_nexus TO NAME_pgdb_admin;
+
+-- Connect to nexusrmm database to set ownership
+\c nexusrmm
+ALTER SCHEMA public OWNER TO scogo_nexus;
+
+-- Connect to nexusmesh database to set ownership
+\c nexusmesh
+ALTER SCHEMA public OWNER TO scogo_nexus;
+
+```
+- Verify the database access:
+
+```bash
+# Test tacticalrmm database connection
+PGPASSWORD=SUPER_SECRET_PASSWORD psql -h your-postgres-host.example.com -U scogo_nexus -d nexusrmm
+
+# Test meshcentral database connection
+PGPASSWORD=SUPER_SECRET_PASSWORD psql -h your-postgres-host.example.com -U scogo_nexus -d nexusmesh
+```
+
+#### Connection Pooling
+
+For high-performance setups, consider enabling connection pooling on your database service if available, or using PgBouncer in front of your PostgreSQL server.
+
 ## Installation Steps
 
 ### 1. Prepare Your Server
 
-Update your system before beginning:
+First, install the required packages and update your system:
 
 ```bash
 sudo apt update
-sudo apt upgrade -y
+sudo apt install -y wget curl sudo ufw vim git
+sudo apt -y upgrade
+```
+
+#### Create a Non-Root User (if not already done)
+
+TacticalRMM installation should be run as a non-root user with sudo privileges:
+
+```bash
+sudo useradd -m -G sudo -s /bin/bash scogo
+sudo passwd scogo
+# Set a secure password for the user
+```
+
+Log in as the new user:
+
+```bash
+su - scogo
+```
+
+#### Configure Firewall
+
+Set up basic firewall rules to protect your server:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow https
+sudo ufw allow ssh
+sudo ufw enable && sudo ufw reload
+sudo ufw status
+```
+
+#### Verify Your Public IP
+
+Confirm your server's public IP address to use for DNS records:
+
+```bash
+curl https://icanhazip.tacticalrmm.io
+# Example output: 20.244.9.89
+```
+
+Use this IP address when creating the DNS records for your domains.
+
+#### Complete System Updates
+
+Finalize system preparation:
+
+```bash
+sudo apt update
+sudo upgrade -y
 sudo reboot
 ```
+
+After the server reboots, log back in and continue with the installation.
 
 ### 2. Download the Installation Script
 
@@ -46,7 +228,57 @@ wget https://raw.githubusercontent.com/ksingh-scogo/tacticalrmm/refs/heads/ksing
 chmod +x install_ext_pgdb.sh
 ```
 
-### 3. Run the Installation Script
+### 3. Update Installation Script with Your Database Credentials
+
+Before running the installation script, modify the database configuration in `install_ext_pgdb.sh`:
+
+```bash
+# Download the installation script
+wget https://raw.githubusercontent.com/ksingh-scogo/tacticalrmm/refs/heads/ksingh-v1.0.0/install_ext_pgdb.sh
+chmod +x install_ext_pgdb.sh
+
+# Edit the script to update database credentials
+nano install_ext_pgdb.sh
+```
+
+Find and modify these lines in the script (around line 110-115):
+
+```bash
+# Set database credentials for external PostgreSQL
+pgusername="trmm_user"  # Replace with your database user
+pgpw="your_secure_password"  # Replace with your password
+pghost="your-postgres-host.example.com"  # Replace with your PostgreSQL host
+MESHPGUSER="trmm_user"  # Use the same user for meshcentral
+MESHPGPWD="your_secure_password"  # Use the same password
+```
+
+Save the changes and proceed with the installation as described in the next section.
+
+### Additional Configuration for Cloud Database Services
+
+#### SSL Configuration
+
+Most cloud PostgreSQL providers require SSL connections. The installation script already includes SSL configuration, but you might need to modify it for specific providers.
+
+For Neon PostgreSQL:
+```bash
+# The script already includes this for Neon:
+'OPTIONS': {
+    'sslmode': 'require',
+}
+```
+
+For AWS RDS or other providers that use certificates:
+```bash
+# You might need to add this to the script manually:
+'OPTIONS': {
+    'sslmode': 'verify-full',
+    'sslrootcert': '/path/to/ca-certificate.pem',
+}
+```
+
+
+### 4. Run the Installation Script
 
 Important: Run as a regular user with sudo privileges, NOT as root!
 
@@ -54,7 +286,7 @@ Important: Run as a regular user with sudo privileges, NOT as root!
 ./install_ext_pgdb.sh
 ```
 
-### 4. Follow the Prompts
+### 5. Follow the Prompts
 
 When prompted, enter the following information:
 
@@ -65,7 +297,7 @@ When prompted, enter the following information:
 - Email address for Let's Encrypt certificates
 - Username for the RMM web interface
 
-### 5. DNS Challenge for Let's Encrypt
+### 6. DNS Challenge for Let's Encrypt
 
 During installation, you'll be prompted to create a DNS TXT record for Let's Encrypt validation:
 
@@ -73,7 +305,7 @@ During installation, you'll be prompted to create a DNS TXT record for Let's Enc
 2. Wait for DNS propagation (may take a few minutes to several hours)
 3. Press Enter to continue the installation once the record is created
 
-### 6. Set Up Two-Factor Authentication
+### 7. Set Up Two-Factor Authentication
 
 After installation, a QR code will be displayed for setting up two-factor authentication:
 
@@ -252,8 +484,8 @@ sudo journalctl -u meshcentral.service -f
    # Install psql client if needed
    sudo apt install -y postgresql-client
    
-   # Test connection (replace with your actual credentials)
-   PGPASSWORD=npg_lyjE2SAFGLN7 psql -h ep-polished-bonus-a18ur1vn-pooler.ap-southeast-1.aws.neon.tech -U neondb_owner -d tacticalrmm
+   # Test connection using credentials from the install script
+   PGPASSWORD=<database_password> psql -h <database_host> -U <database_user> -d tacticalrmm
    ```
 
 ### Service Recovery
@@ -392,8 +624,8 @@ sudo apt autoremove -y
 While the Neon cloud database is managed externally, you may want to perform some maintenance operations:
 
 ```bash
-# Connect to the database
-PGPASSWORD=npg_lyjE2SAFGLN7 psql -h ep-polished-bonus-a18ur1vn-pooler.ap-southeast-1.aws.neon.tech -U neondb_owner -d tacticalrmm
+# Connect to the database using credentials from the install script
+PGPASSWORD=<database_password> psql -h <database_host> -U <database_user> -d tacticalrmm
 
 # Run ANALYZE to update statistics
 ANALYZE;
