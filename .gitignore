@@ -68,3 +68,5 @@ docker-compose.yaml
 kubernetes
 v1-working.json
 v2-not-working.json
+.cursor
+
